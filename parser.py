@@ -5,7 +5,8 @@ from neomodel import StringProperty, RelationshipTo, StructuredNode, Relationshi
 import re
 # Radare 2 bindings in python
 import r2pipe
-
+import argparse
+import os
 
 
 
@@ -35,6 +36,20 @@ class Function(StructuredNode):
     imports_symbol = RelationshipFrom('Symbol','imports')
     defined_at = RelationshipFrom('File','defines')
 
+
+def get_files_to_work_on(directories):
+	for directory in directories:
+		files = []
+		if not os.path.exists(directory):
+			print('{} does not exist'.format(directory))
+			continue
+		
+		if os.path.isdir(directory):
+			files.extend([f for f in os.listdir(directory) if os.isfile(join(directory, f)) and not os.islink(join(directory, f))])
+	
+	if not files:
+		print('No functional directories found')
+		os._exit(-1)
 
 
 # First parameter is the filename (the string that is stored, second argument is the path)
@@ -95,3 +110,19 @@ def getdisassemble_to_function(function_name, filename, path):
                     my_function.imports_symbol.connect(symbol)
                     my_function.defined_at.connect(filenode)
 
+
+def main(filename, pipe, mode):
+	if 'get_import_export' == mode or 'all' == mode:
+		files = get_files_to_work_on(filename)
+		for f in files:
+			get_import_export_radare(f, pipe)
+	if 'get_dissasemble' == mode or 'all' == mode:
+		pass
+					
+if __name__ == '__main__':
+	ap = argparse.ArgumentParser()
+	ap.add_argument('-d', '--directories',nargs='+',help='Directories to search files from', required=True)
+	ap.add_argument('-p', '--pipe', help='The name of the neo4j pipe', required=True)
+	ap.add_argument('-m', '--mode', choices=['get_import_export', 'get_dissasemble', 'both'], required=True)
+	ag = ap.parse_args()
+	main(ag.directories, ag.pipe, ag.mode)
